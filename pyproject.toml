@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "typo-guard"
+version = "0.1.0"
+description = "An AST-powered spellchecker linter for Python identifiers."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Group 20"}]
+keywords = ["linter", "spellcheck", "ast", "python", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = ["pyspellchecker>=0.8.1,<1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "build>=1.2,<2"]
+
+[project.scripts]
+typo-guard = "typo_guard.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/typo-guard"
+Repository = "https://github.com/your-org/typo-guard"
+Issues = "https://github.com/your-org/typo-guard/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/typo_guard"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
