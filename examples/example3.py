@@ -4,4 +4,4 @@ def functin():
         yield a
         a,b=b,a+b
 generote = functin()
-print([next(generote) for _ in range(10)])
+print([str(next(generote))+" ,NEXT NUMBAR" for _ in range(int(input())])
