@@ -1,4 +1,4 @@
-"""Small demonstration file containing intentional identifier typos."""
+"""All misspellings in different formats/types checked"""
 
 recieved_data = [10, 20, 30]
 
