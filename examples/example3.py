@@ -5,6 +5,6 @@ def fibonnaci():
         yield a
         a,b=b,a+b
 generote = fibonnaci()
-print("fibonnaci numbers -- type a nymber as input")
+print("fibonaaci numbers -- type a nymber as input")
 print([str(next(generote)) for _ in range(int(input()))])
  
