@@ -1,3 +1,4 @@
+'''Check mispelling in functions (even considered words that contains hyphens and dashes)'''
 def remov_daplicetes(s):
     t = ''
     for i in s:
