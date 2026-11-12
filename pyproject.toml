@@ -4,24 +4,37 @@ build-backend = "hatchling.build"
 
 [project]
 name = "typo-guard"
-version = "0.1.0"
-description = "An AST-powered spellchecker linter for Python identifiers."
+dynamic = ["version"]
+description = "An AST-powered spellchecker linter for Python identifiers, with a clear table report."
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
-authors = [{name = "Group 20"}]
-keywords = ["linter", "spellcheck", "ast", "python", "cli"]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Group 20" }]
+keywords = ["linter", "spellcheck", "typo", "ast", "identifiers", "python", "cli"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Quality Assurance",
+  "Typing :: Typed",
 ]
-dependencies = ["pyspellchecker>=0.8.1,<1"]
+dependencies = [
+  "pyspellchecker>=0.8.1,<1",
+  "rich>=12.0",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9", "build>=1.2,<2"]
+dev = ["pytest>=7", "build>=1.2", "twine>=6.1"]
 
 [project.scripts]
 typo-guard = "typo_guard.cli:main"
@@ -30,10 +43,28 @@ typo-guard = "typo_guard.cli:main"
 Homepage = "https://github.com/your-org/typo-guard"
 Repository = "https://github.com/your-org/typo-guard"
 Issues = "https://github.com/your-org/typo-guard/issues"
+Changelog = "https://github.com/your-org/typo-guard/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/typo_guard/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/typo_guard"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/typo_guard",
+  "tests",
+  "examples",
+  "docs",
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  ".pre-commit-hooks.yaml",
+  ".typo-guard-words",
+]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+pythonpath = ["src"]

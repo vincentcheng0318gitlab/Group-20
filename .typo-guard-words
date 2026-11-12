@@ -1,0 +1,18 @@
+# typo-guard's own project vocabulary.
+# CI runs:  typo-guard lint src tests --allowlist .typo-guard-words
+# One or more words per line; text after '#' is ignored.
+
+# Python packaging and tooling jargon
+allowlist changelog dunder filename linted linting pyproject subcommand subparsers traceback
+
+# pytest fixtures and standard-library names
+capsys monkeypatch isatty devnull dirs proc src symlink virtualenvs posix
+
+# encodings and terminals
+ansi bom crlf undecodable
+
+# words used by the original 0.1.0 test-suite
+recurses pre
+
+# not in the smaller dictionary of pyspellchecker 0.8.x (the oldest supported version)
+arg coloured

@@ -1,0 +1,8 @@
+- id: typo-guard
+  name: typo-guard
+  description: Find likely spelling mistakes in Python identifiers.
+  entry: typo-guard lint --format text
+  language: python
+  types: [python]
+  files: \.py$
+  require_serial: true

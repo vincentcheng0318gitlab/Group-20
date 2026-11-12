@@ -1,0 +1,20 @@
+flowchart TB
+    subgraph S1["Stage A - find and read files (hardened in 0.2.0)"]
+        direction LR
+        A["Paths on the<br/>command line"] --> B["1 Discover<br/>iter_python_files<br/>prunes .venv, build, ..."] --> C["2 Decode<br/>read_source<br/>UTF-8, BOM, PEP 263"]
+    end
+    subgraph S2["Stage B - detection engine (original typo-guard logic, unchanged)"]
+        direction LR
+        D["3 Parse<br/>ast.parse"] --> E["4 Visit definitions<br/>variable, argument,<br/>function, class"] --> F["5 Split names<br/>snake, camel,<br/>acronyms"] --> G["6 Filter<br/>short words, digits,<br/>allowlist"] --> H["7 Look up<br/>pyspellchecker<br/>distance 1"] --> I["8 Rank<br/>suggestions by<br/>word frequency"]
+    end
+    subgraph S3["Stage C - collect and present (new in 0.2.0)"]
+        direction LR
+        J["Diagnostics +<br/>FileErrors<br/>(scan_paths)"] --> K["9 Report<br/>table, text<br/>or JSON"] --> L["10 Exit code<br/>0 clean, 1 typos,<br/>2 errors"]
+    end
+    S1 --> S2 --> S3
+    classDef io fill:#f3f3f3,stroke:#888,color:#222;
+    classDef engine fill:#e8f1fb,stroke:#2472c8,color:#0b2545;
+    classDef out fill:#eafaf1,stroke:#0dbc79,color:#063;
+    class A,B,C io;
+    class D,E,F,G,H,I engine;
+    class J,K,L out;

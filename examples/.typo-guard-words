@@ -1,0 +1,3 @@
+# Project vocabulary for typo-guard (one or more words per line; '#' starts a comment).
+# Use it with:  typo-guard lint examples --allowlist examples/.typo-guard-words
+reponse   # pretend this is an internal product name
