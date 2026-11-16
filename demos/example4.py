@@ -1,14 +1,16 @@
-"""Demonstration of advanced Python definitions and scope edge cases."""
+"""Check misspellings in class methods, instance attributes, and loop comprehensions."""
 
-recieved_first, (innitial_second, *valid_tail) = [1, 2, 3], ([4], 5)
+class UsrAccaunt:
 
-async def fetch_payloadd(endpoinnt_url: str, *, timout_secs: int = 10) -> dict:
-    if (responce_len := len(endpoinnt_url)) > 0:
-        pass
-    client = object()
-    processt_token = getattr(client, "recieved_token", None)
-    return {"status": processt_token, "len": responce_len}
+    def __init__(self, usernaam: str, passwrd_hash: str):
+        self.usernaam = usernaam
+        self.passwrd_hash = passwrd_hash
 
-class DatabasConfigur:
-    def __init__(self, connect_strng: str) -> None:
-        self.connect_strng = connect_strng  
+    def validat_creds(self, entred_pass: str) -> bool:
+        is_match = self.passwrd_hash == entred_pass
+        return is_match
+
+
+def get_actv_users(usrs_list):
+    filterd_usrs = [u for u in usrs_list if u != "admin"]
+    return filterd_usrs
