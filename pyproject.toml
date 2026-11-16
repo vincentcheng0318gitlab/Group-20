@@ -10,7 +10,12 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Group 20" }]
+authors = [{ name = "CHENG Chun Wan" }
+{ name = "HUI Sharlene Sum Yin" }
+{ name = "KAN Ka Hei" }
+{ name = "TSE Cheuk Hang" }
+{ name = "TSENG Man Yee" }
+{ name = "WONG Sze Ying" }]
 keywords = ["linter", "spellcheck", "typo", "ast", "identifiers", "python", "cli"]
 classifiers = [
   "Development Status :: 4 - Beta",
