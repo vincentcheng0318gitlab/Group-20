@@ -15,7 +15,8 @@ authors = [{ name = "CHENG Chun Wan" }
 { name = "KAN Ka Hei" }
 { name = "TSE Cheuk Hang" }
 { name = "TSENG Man Yee" }
-{ name = "WONG Sze Ying" }]
+{ name = "WONG Sze Ying" }
+]
 keywords = ["linter", "spellcheck", "typo", "ast", "identifiers", "python", "cli"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -32,7 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Quality Assurance",
   "Typing :: Typed",
-]
+  ]
 dependencies = [
   "pyspellchecker>=0.8.1,<1",
   "rich>=12.0",
