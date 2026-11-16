@@ -1,4 +1,4 @@
-"""Check misspellings in class methods, instance attributes, and loop comprehensions."""
+"""Check mispellings on class names"""
 
 class UsrAccaunt:
 
