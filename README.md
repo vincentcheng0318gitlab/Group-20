@@ -356,7 +356,7 @@ represents and how to run a single test.
 
 ## Known limitations
 
-- **Dictionary-based checking produces some false positives.** Names of people and products, abbreviations and technical jargon are not in an English dictionary. Add them to an allowlist; this is the intended workflow.
+- **Dictionary-based checking produces some false positives.** Names of people and products, abbreviations and technical jargon are not in an English dictionary. Add them to an allowlist; this is the intended workflow. (P.S 110 tests, 2 tests detected false positives, 6 tests detetced false negatives [some words are not included in the dictionary provided])
 - **English only.** The dictionary is American English, so British spellings such as `colour` or `honoured` may be reported.
 - **Results depend on the dictionary version.** `pyspellchecker` 0.8.4 and newer know 160,572 words; the oldest supported version, 0.8.1, knows 138,581. Pin the version in CI if every machine must give identical results.
 - **Definitions only.** Attribute names (`self.recieved = ...`), imported names, keyword arguments at call sites, `lambda` parameters, `except ... as name` and `match` captures are not checked. A typo is reported where the name is *defined*, not at every use.
@@ -422,15 +422,6 @@ available.
 5. Tag the release (`git tag v0.2.0 && git push --tags`) so the pre-commit hook can pin it.
 
 Never commit a PyPI token; use `TWINE_PASSWORD`, a keyring or PyPI trusted publishing.
-
-## One-minute demo script
-
-1. **Problem (10 s).** Show `examples/example.py`: "This file runs fine, but four names are misspelled, and two of them would become a public API."
-2. **Run (15 s).** `typo-guard lint examples/example.py`: point out the five columns and the clickable `file:line:column`.
-3. **Precision (10 s).** `typo-guard lint examples/clean_example.py`: the same typos inside a comment and a string are *not* reported, because typo-guard reads the AST.
-4. **Vocabulary (10 s).** `typo-guard lint examples --allowlist examples/.typo-guard-words`: the product name is accepted.
-5. **Automation (10 s).** `typo-guard lint examples/example.py --format json` and `echo $?` gives exit code 1, so CI fails on typos.
-6. **Close (5 s).** 152 automated tests, Python 3.9 to 3.14, and the manual in `docs/MANUAL.md`.
 
 ## Assessment rubric checklist
 
