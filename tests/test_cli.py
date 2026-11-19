@@ -56,6 +56,55 @@ def test_cli_allowlist_file(tmp_path, capsys):
     capsys.readouterr()
 
 
+def test_cli_british_english_option(tmp_path, capsys):
+    sample = tmp_path / "british.py"
+    sample.write_text(
+        "colour_value = 1\nfavourite_colour = 1\norganise_centre = 1\ntravelling_data = 1\n",
+        encoding="utf-8",
+    )
+    assert main(["lint", str(sample), "--language", "en-GB", "--format", "json"]) == 0
+    assert json.loads(capsys.readouterr().out) == []
+
+
+def test_cli_custom_dictionary_file_applies_to_every_file(tmp_path, capsys):
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    first.write_text("frobnicator_value = 1\n", encoding="utf-8")
+    second.write_text("frobnicator_count = 2\n", encoding="utf-8")
+    dictionary = tmp_path / "project-words.txt"
+    dictionary.write_text("# product vocabulary\nfrobnicator,\n", encoding="utf-8")
+    assert main([
+        "lint", str(first), str(second), "--dictionary", str(dictionary), "--format", "json"
+    ]) == 0
+    assert json.loads(capsys.readouterr().out) == []
+
+
+def test_cli_missing_dictionary_file_is_a_user_error(tmp_path, capsys):
+    sample = tmp_path / "sample.py"
+    sample.write_text("received_value = 1\n", encoding="utf-8")
+    assert main(["lint", str(sample), "--dictionary", str(tmp_path / "missing.txt")]) == 2
+    assert "dictionary file not found" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("make_dictionary", "expected"),
+    [
+        ("directory", "dictionary is not a regular file"),
+        ("binary", "dictionary must be UTF-8 text"),
+    ],
+)
+def test_cli_invalid_dictionary_file_is_a_user_error(tmp_path, capsys, make_dictionary, expected):
+    sample = tmp_path / "sample.py"
+    sample.write_text("received_value = 1\n", encoding="utf-8")
+    dictionary = tmp_path / "words.txt"
+    if make_dictionary == "directory":
+        dictionary.mkdir()
+    else:
+        dictionary.write_bytes(b"\xff\xfe")
+    assert main(["lint", str(sample), "--dictionary", str(dictionary)]) == 2
+    assert expected in capsys.readouterr().err
+
+
 def test_cli_missing_path_is_usage_error(capsys):
     assert main(["lint", "does-not-exist.py"]) == 2
     assert "path not found" in capsys.readouterr().err

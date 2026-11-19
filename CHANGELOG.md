@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `--language en-GB` and the Python API's `language="en-GB"` option accept common British-English spelling variants while keeping American English as the default.
+- `--dictionary FILE` and the Python API's `dictionary_words` parameter add reusable, UTF-8 supplemental vocabulary without mutating the cached base dictionary.
+
 ## [0.2.0] - 2026-11-04
 
 This release keeps the 0.1.0 detection engine exactly as it was and rebuilds

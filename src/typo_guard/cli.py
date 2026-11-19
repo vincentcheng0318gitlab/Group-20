@@ -33,6 +33,10 @@ class AllowlistError(Exception):
     """The allowlist file is missing, not a file, or not readable text."""
 
 
+class DictionaryError(Exception):
+    """A supplemental dictionary file is missing or not readable text."""
+
+
 def _split_words(text: str) -> list[str]:
     return [word.lower() for word in _WORD_SEPARATORS.split(text.strip()) if word]
 
@@ -56,6 +60,27 @@ def _load_allowlist(path: Optional[str], inline_words: Iterable[str]) -> set[str
             raise AllowlistError(f"cannot read allowlist {path}: {error.strerror or error}") from error
         for line in text.splitlines():
             words.update(_split_words(line.partition("#")[0]))
+    return words
+
+
+def _load_dictionary(path: Optional[str]) -> set[str]:
+    """Load supplemental words from a UTF-8 text file."""
+    if not path:
+        return set()
+    file = Path(path)
+    if not file.exists():
+        raise DictionaryError(f"dictionary file not found: {path}")
+    if not file.is_file():
+        raise DictionaryError(f"dictionary is not a regular file: {path}")
+    try:
+        text = file.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise DictionaryError(f"dictionary must be UTF-8 text: {path}") from error
+    except OSError as error:
+        raise DictionaryError(f"cannot read dictionary {path}: {error.strerror or error}") from error
+    words: set[str] = set()
+    for line in text.splitlines():
+        words.update(_split_words(line.partition("#")[0]))
     return words
 
 
@@ -104,6 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
     lint.add_argument(
         "--allowlist", metavar="FILE",
         help="file of accepted words, one per line; text after '#' is ignored",
+    )
+    lint.add_argument(
+        "--language", choices=("en-US", "en-GB"), default="en-US",
+        help="English spelling variant (default: en-US)",
+    )
+    lint.add_argument(
+        "--dictionary", metavar="FILE",
+        help="additional accepted words in a UTF-8 word list; text after '#' is ignored",
     )
     lint.add_argument(
         "--max-suggestions", type=_non_negative_int, default=3, metavar="N",
@@ -164,13 +197,19 @@ def _run_lint(args: argparse.Namespace) -> int:
 
     try:
         allow_words = _load_allowlist(args.allowlist, args.allow)
+        dictionary_words = _load_dictionary(args.dictionary)
     except AllowlistError as error:
+        render_message(errors_out, "error", str(error))
+        return EXIT_ERROR
+    except DictionaryError as error:
         render_message(errors_out, "error", str(error))
         return EXIT_ERROR
 
     result = scan_paths(
         args.paths,
         allow_words=allow_words,
+        language=args.language,
+        dictionary_words=dictionary_words,
         max_suggestions=args.max_suggestions,
         exclude=(*DEFAULT_EXCLUDES, *args.exclude),
     )

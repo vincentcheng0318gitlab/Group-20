@@ -2,6 +2,7 @@ import ast
 
 import pytest
 
+from typo_guard import core
 from typo_guard.core import extract_identifiers, lint_paths, lint_source, split_identifier
 
 
@@ -45,6 +46,77 @@ def test_custom_allowlist_suppresses_domain_terms():
     source = "frobnicator_value = 1\n"
     assert any(item.word == "frobnicator" for item in lint_source(source))
     assert lint_source(source, allow_words={"frobnicator"}) == []
+
+
+def test_british_english_accepts_common_uk_spellings(monkeypatch):
+    class AmericanDictionary:
+        words = {
+            "color", "favorite", "organize", "organizational", "analyze", "center",
+            "catalog", "traveling", "practice", "practicing", "theater",
+        }
+
+        def __contains__(self, word):
+            return word in self.words
+
+        def candidates(self, word):
+            return set()
+
+        def word_usage_frequency(self, word):
+            return 1
+
+    monkeypatch.setattr(core, "_get_spellchecker", lambda: AmericanDictionary())
+    source = (
+        "colour = 1\nfavourite = 1\norganise = 1\norganisational = 1\nanalyse = 1\n"
+        "centre = 1\ncatalogue = 1\ntravelling = 1\npractise = 1\n"
+        "practising = 1\ntheatre = 1\n"
+    )
+    assert lint_source(source, language="en-GB") == []
+    assert {item.word for item in lint_source(source, language="en-US")} == {
+        "colour", "favourite", "organise", "organisational", "analyse", "centre",
+        "catalogue", "travelling", "practise", "practising", "theatre"
+    }
+
+
+def test_custom_dictionary_words_do_not_mutate_the_cached_dictionary(monkeypatch):
+    class AmericanDictionary:
+        def __contains__(self, word):
+            return word in {"value"}
+
+        def candidates(self, word):
+            return set()
+
+        def word_usage_frequency(self, word):
+            return 1
+
+    monkeypatch.setattr(core, "_get_spellchecker", lambda: AmericanDictionary())
+    source = "frobnicator_value = 1\n"
+    assert lint_source(source, dictionary_words=("frobnicator",)) == []
+    assert [item.word for item in lint_source(source)] == ["frobnicator"]
+
+
+def test_lint_paths_reuses_dictionary_word_generators(tmp_path, monkeypatch):
+    class AmericanDictionary:
+        def __contains__(self, word):
+            return word == "value"
+
+        def candidates(self, word):
+            return set()
+
+        def word_usage_frequency(self, word):
+            return 1
+
+    monkeypatch.setattr(core, "_get_spellchecker", lambda: AmericanDictionary())
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    first.write_text("frobnicator_value = 1\n", encoding="utf-8")
+    second.write_text("frobnicator_value = 2\n", encoding="utf-8")
+    words = (word for word in ("frobnicator",))
+    assert lint_paths([first, second], dictionary_words=words) == []
+
+
+def test_lint_source_rejects_unknown_language():
+    with pytest.raises(ValueError, match="en-US.*en-GB"):
+        lint_source("value = 1", language="en-CA")
 
 
 def test_lint_paths_recurses_and_ignores_non_python_files(tmp_path):
