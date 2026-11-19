@@ -179,7 +179,7 @@ program as a module: `python -m typo_guard --version`.
 ```bash
 typo-guard lint examples/example.py                                    # 4 findings, exit code 1
 typo-guard lint examples/clean_example.py                              # no findings, exit code 0
-typo-guard lint examples --allowlist examples/.typo-guard-words        # 'Reponse' accepted
+typo-guard lint examples/example.py examples/clean_example.py --allowlist examples/.typo-guard-words  # 'Reponse' accepted
 ```
 
 ### Everyday commands

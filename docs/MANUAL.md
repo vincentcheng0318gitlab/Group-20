@@ -236,13 +236,13 @@ reponse   # pretend this is an internal product name
 ```
 
 ```bash
-typo-guard lint examples --allowlist examples/.typo-guard-words
+typo-guard lint examples/example.py examples/clean_example.py --allowlist examples/.typo-guard-words
 ```
 
 ![Allowlist run](images/allowlist-output.png)
 
-This time the whole `examples` folder was scanned (2 files) and the class name is no
-longer reported. This is the normal way to handle domain vocabulary.
+This time the two demo files were scanned and the class name is no longer reported.
+This is the normal way to handle domain vocabulary.
 
 ## 4. Everyday use
 
