@@ -179,7 +179,7 @@ program as a module: `python -m typo_guard --version`.
 ```bash
 typo-guard lint examples/example.py                                    # 4 findings, exit code 1
 typo-guard lint examples/clean_example.py                              # no findings, exit code 0
-typo-guard lint examples --allowlist examples/.typo-guard-words        # 'Reponse' accepted
+typo-guard lint examples/example.py examples/clean_example.py --allowlist examples/.typo-guard-words  # 'Reponse' accepted
 ```
 
 ### Everyday commands
@@ -191,6 +191,8 @@ typo-guard lint examples --allowlist examples/.typo-guard-words        # 'Repons
 | Check several paths | `typo-guard lint src tests scripts/deploy.py` |
 | Accept a few words | `typo-guard lint src --allow numpy --allow k8s,grpc` |
 | Accept the words listed in a file | `typo-guard lint src --allowlist .typo-guard-words` |
+| Use British English spelling | `typo-guard lint src --language en-GB` |
+| Add words from a dictionary file | `typo-guard lint src --dictionary project-words.txt` |
 | Skip generated code | `typo-guard lint . --exclude migrations --exclude "*_pb2.py"` |
 | One line per finding (scripts, editors) | `typo-guard lint src --format text` |
 | JSON for other tools | `typo-guard lint src --format json > typos.json` |
@@ -246,6 +248,27 @@ k8s grpc protobuf  # several words on one line
 ```
 
 ![The allowlist removes the accepted word from the report](docs/images/allowlist-output.png)
+
+### Example: British English and an extra dictionary
+
+The default is American English. Use `--language en-GB` to accept common British
+spellings such as `colour`, `organise`, `centre` and `travelling`. A supplemental
+dictionary file adds project or regional words to either language without replacing
+the built-in English dictionary:
+
+```text
+# project-words.txt (UTF-8)
+colourway
+organisation, programme
+```
+
+```bash
+typo-guard lint src --language en-GB --dictionary project-words.txt
+```
+
+Dictionary files accept words separated by spaces, commas or new lines; text after
+`#` is treated as a comment. Use `--allowlist` for a team's accepted vocabulary, or
+`--dictionary` when maintaining a reusable supplemental word list.
 
 ### Example: one broken file does not stop the run
 
@@ -337,16 +360,16 @@ walks through every step with examples.
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest            # 152 tests, about 10 seconds
+python -m pytest            # 170 tests, about 10 seconds
 python -m pytest -v         # list every test by name
 ```
 
 | Test file | Tests | What it proves |
 |---|---:|---|
-| `tests/test_core.py` | 7 | The original 0.1.0 engine tests, unchanged: splitting, AST extraction, ignored strings, comments and attributes, allowlists, recursion. |
-| `tests/test_engine_preserved.py` | 33 | The 0.2.0 engine is structurally identical to the 0.1.0 code and produces identical findings on a corpus. |
+| `tests/test_core.py` | 11 | Splitting, AST extraction, ignored strings/comments/attributes, allowlists, recursion, British spelling variants and supplemental dictionary words. |
+| `tests/test_engine_preserved.py` | 42 | The 0.2.0 engine is structurally identical to the 0.1.0 code and produces identical findings on a corpus. |
 | `tests/test_examples.py` | 25 | The demo files give exactly the rows shown above, and the ten acceptance cases from the original README are automated. |
-| `tests/test_cli.py` | 19 | Command-line options, the three output formats and every exit code. |
+| `tests/test_cli.py` | 24 | Command-line options, including British English and supplemental dictionary files, the three output formats and every exit code. |
 | `tests/test_report.py` | 21 | Table columns, styles, colours, the three width layouts, ASCII fallback and summary wording. |
 | `tests/test_hardening.py` | 40 | One regression test for every robustness defect fixed in 0.2.0 (encodings, broken files, virtual environments, broken pipes, ...). |
 | `tests/test_packaging.py` | 7 | Version, entry point, dependencies, typing marker and pre-commit hook are consistent, and typo-guard lints its own code cleanly. |
@@ -356,8 +379,8 @@ represents and how to run a single test.
 
 ## Known limitations
 
-- **Dictionary-based checking produces some false positives.** Names of people and products, abbreviations and technical jargon are not in an English dictionary. Add them to an allowlist; this is the intended workflow. (P.S 110 tests, 2 tests detected false positives, 6 tests detetced false negatives [some words are not included in the dictionary provided])
-- **English only.** The dictionary is American English, so British spellings such as `colour` or `honoured` may be reported.
+- **Dictionary-based checking produces some false positives.** Names of people and products, abbreviations and technical jargon may not be in the built-in English dictionary. Add them with `--dictionary FILE` or the project's allowlist.
+- **English only.** American English is the default. `--language en-GB` accepts common British spelling variants, while `--dictionary FILE` adds extra words. The British variant covers common spelling patterns and equivalents rather than providing a separate, exhaustive British dictionary.
 - **Results depend on the dictionary version.** `pyspellchecker` 0.8.4 and newer know 160,572 words; the oldest supported version, 0.8.1, knows 138,581. Pin the version in CI if every machine must give identical results.
 - **Definitions only.** Attribute names (`self.recieved = ...`), imported names, keyword arguments at call sites, `lambda` parameters, `except ... as name` and `match` captures are not checked. A typo is reported where the name is *defined*, not at every use.
 - **Words shorter than three letters are skipped,** so very short abbreviations are never reported.
@@ -384,13 +407,14 @@ typo-guard/
 │   └── .typo-guard-words       demo allowlist
 ├── src/typo_guard/
 │   ├── core.py                 detection engine: AST visitor, splitter, dictionary lookup
+│   ├── dictionary.py           British-English view and supplemental vocabulary
 │   ├── runner.py               fault-tolerant multi-file scan (findings + per-file errors)
 │   ├── report.py               table, text and JSON output
 │   ├── cli.py                  command-line interface and exit codes
 │   ├── __init__.py             public API and version
 │   ├── __main__.py             enables `python -m typo_guard`
 │   └── py.typed                marks the package as typed
-└── tests/                      152 tests (see above) and the 0.1.0 reference engine
+└── tests/                      170 tests (see above) and the 0.1.0 reference engine
 ```
 
 ## Distribution and publishing
@@ -431,7 +455,7 @@ Never commit a PyPI token; use `TWINE_PASSWORD`, a keyring or PyPI trusted publi
 | **Innovation** | [Innovation](#innovation) and [How it compares](#how-it-compares): six distinguishing ideas and a comparison with codespell, typos and pylint. |
 | **Installation guide** | [Installation](#installation): three installation routes, per-OS commands and verification. The manual adds troubleshooting. |
 | **Usage examples** | [Usage](#usage): quick start, a command table, real outputs in all three formats, allowlist, CI, pre-commit and Python API. |
-| **Functional** | 152 passing tests on Python 3.9 to 3.14, a fault-tolerant runner, and documented exit codes. |
+| **Functional** | 170 collected pytest cases on Python 3.9 to 3.14, a fault-tolerant runner, and documented exit codes. |
 | **Documented** | This README, the [manual](docs/MANUAL.md) (install, internals, tests, troubleshooting) and the [changelog](CHANGELOG.md). |
 | **Published** | `pyproject.toml` is ready, `twine check` passes, and the steps are in [Distribution and publishing](#distribution-and-publishing). |
 | **Teamwork** | Use a public Git repository with regular, meaningful commits from every group member. |

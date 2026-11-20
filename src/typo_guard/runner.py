@@ -92,10 +92,17 @@ def scan_paths(
     allow_words: Iterable[str] = (),
     max_suggestions: int = 3,
     exclude: Optional[Iterable[str]] = None,
+    language: str = "en-US",
+    dictionary_words: Iterable[str] = (),
 ) -> ScanResult:
     """Lint every Python file under ``paths``, collecting errors per file."""
     result = ScanResult()
     allow = tuple(allow_words) if not isinstance(allow_words, str) else (allow_words,)
+    dictionary = (
+        tuple(dictionary_words)
+        if not isinstance(dictionary_words, str)
+        else (dictionary_words,)
+    )
 
     for raw_path in paths:
         candidate = Path(raw_path)
@@ -113,7 +120,13 @@ def scan_paths(
         result.files.append(str(path))
         try:
             result.diagnostics.extend(
-                lint_file(path, allow_words=allow, max_suggestions=max_suggestions)
+                lint_file(
+                    path,
+                    allow_words=allow,
+                    max_suggestions=max_suggestions,
+                    language=language,
+                    dictionary_words=dictionary,
+                )
             )
         except (OSError, UnicodeError, SyntaxError, ValueError) as error:
             result.errors.append(describe_error(path, error))

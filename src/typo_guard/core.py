@@ -1,10 +1,10 @@
 """Core linting logic for typo-guard.
 
-The detection engine (AST definition visitor, identifier splitter, built-in
-allowlist and ``pyspellchecker`` lookup with frequency-ranked suggestions) is
-the original typo-guard design.  Version 0.2.0 only hardens the edges around
-it: robust file decoding, consistent error types across Python versions,
-safe directory discovery, and a cached dictionary.  See ``CHANGELOG.md``.
+The default detection engine (AST definition visitor, identifier splitter,
+built-in allowlist and ``pyspellchecker`` lookup with frequency-ranked
+suggestions) preserves the original typo-guard behaviour. Optional dictionary
+views add common British-English variants and project vocabulary without
+mutating the cached base dictionary. See ``CHANGELOG.md``.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Optional, Sequence, Union
+from .dictionary import configured_dictionary
 
 try:
     from spellchecker import SpellChecker
@@ -237,9 +238,13 @@ def lint_source(
     filename: str = "<unknown>",
     allow_words: Iterable[str] = (),
     max_suggestions: int = 3,
+    language: str = "en-US",
+    dictionary_words: Iterable[str] = (),
 ) -> list[Diagnostic]:
     """Lint Python source and return suspected identifier spelling mistakes."""
-    spell = _get_spellchecker()
+    spell = configured_dictionary(
+        _get_spellchecker(), language=language, additional_words=dictionary_words
+    )
     if isinstance(allow_words, str):  # a single word, not an iterable of letters
         allow_words = (allow_words,)
     allowed = DEFAULT_ALLOWLIST | {word.strip().lower() for word in allow_words if word.strip()}
@@ -298,6 +303,9 @@ def lint_paths(
     This strict API raises on the first unreadable/invalid file.  Use
     :func:`typo_guard.runner.scan_paths` to collect per-file errors instead.
     """
+    if "dictionary_words" in kwargs:
+        words = kwargs["dictionary_words"]
+        kwargs["dictionary_words"] = (words,) if isinstance(words, str) else tuple(words)  # type: ignore[arg-type]
     diagnostics: list[Diagnostic] = []
     files = iter_python_files(paths, exclude=exclude)
     for path in sorted(files, key=lambda item: str(item)):

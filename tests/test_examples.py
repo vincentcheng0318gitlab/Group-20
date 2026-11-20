@@ -34,7 +34,15 @@ def test_clean_demo_file_has_no_findings():
 
 
 def test_demo_allowlist_suppresses_the_listed_word(capsys):
-    args = ["lint", str(EXAMPLES), "--allowlist", str(EXAMPLES / ".typo-guard-words"), "--format", "json"]
+    args = [
+        "lint",
+        str(EXAMPLES / "example.py"),
+        str(EXAMPLES / "clean_example.py"),
+        "--allowlist",
+        str(EXAMPLES / ".typo-guard-words"),
+        "--format",
+        "json",
+    ]
     assert main(args) == 1
     words = {item["word"] for item in json.loads(capsys.readouterr().out)}
     assert words == {"recieved", "avrage", "innitial"}

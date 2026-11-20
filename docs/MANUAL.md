@@ -236,13 +236,13 @@ reponse   # pretend this is an internal product name
 ```
 
 ```bash
-typo-guard lint examples --allowlist examples/.typo-guard-words
+typo-guard lint examples/example.py examples/clean_example.py --allowlist examples/.typo-guard-words
 ```
 
 ![Allowlist run](images/allowlist-output.png)
 
-This time the whole `examples` folder was scanned (2 files) and the class name is no
-longer reported. This is the normal way to handle domain vocabulary.
+This time the two demo files were scanned and the class name is no longer reported.
+This is the normal way to handle domain vocabulary.
 
 ## 4. Everyday use
 
@@ -277,8 +277,9 @@ before scanning anything, so that a typo in a CI script is noticed.
 ### 4.2 Managing your project's vocabulary
 
 Every real project uses words that are not in an English dictionary: product names,
-abbreviations (`k8s`), library names (`grpc`), and jargon. There are two ways to
-accept them.
+abbreviations (`k8s`), library names (`grpc`), and jargon. Use an inline word or a
+committed word list for project-specific vocabulary; a supplemental dictionary file
+can also be shared across projects.
 
 The `--allow` option is useful for a quick test. It can be repeated and accepts
 comma-separated lists:
@@ -306,6 +307,27 @@ Both can be used together. typo-guard already accepts about sixty common program
 words (`args`, `kwargs`, `config`, `json`, `utf`, `uuid`, ...), every Python keyword
 and every built-in name (`isinstance`, `enumerate`, ...), so you do not need to list
 those.
+
+For a reusable supplemental word list, use `--dictionary FILE`. It accepts the same
+UTF-8 format as the allowlist, including comma- or space-separated words and `#`
+comments. Unlike `--allowlist`, which is intended for project vocabulary, this option
+is a separate dictionary file that can be shared between projects:
+
+```text
+# project-words.txt
+colourway
+protobuf, grpc
+```
+
+```bash
+typo-guard lint src --dictionary project-words.txt
+```
+
+American English is the default. Select `--language en-GB` to accept common British
+spellings such as `colour`, `organise`, `centre` and `travelling`. This is a
+British-spelling compatibility layer over the bundled American-English dictionary,
+not a separate exhaustive British dictionary. Add less common regional words with
+`--dictionary` or `--allowlist`.
 
 **When to rename instead of allowlisting:** allowlist a word when it is *correct for
 your project*. If the word is simply misspelled, rename the identifier with your
@@ -383,6 +405,9 @@ for issue in lint_source("def calculate_avrage(innitial_value): ...", filename="
 # demo.py:1:1 function avrage ('average',)
 # demo.py:1:22 argument innitial ('initial',)
 
+lint_source("favourite_colour = 1", language="en-GB")
+lint_source("colourway_value = 1", dictionary_words={"colourway"})
+
 result = scan_paths(["src"], allow_words={"grpc"}, exclude=[*DEFAULT_EXCLUDES, "migrations"])
 for error in result.errors:                    # files that could not be analysed
     print("could not check", error.format_text())
@@ -398,7 +423,7 @@ The command-line option `--exclude` always extends it.
 |---|---|---|
 | `split_identifier(name)` | Split a name into lower-case words. | n/a |
 | `extract_identifiers(source)` | List the definitions (`Identifier(line, column, name, kind)`) in source code. | raises `SyntaxError` |
-| `lint_source(source, filename=..., allow_words=..., max_suggestions=3)` | Check source code given as a string or bytes. | raises `SyntaxError` |
+| `lint_source(source, filename=..., allow_words=..., max_suggestions=3, language="en-US", dictionary_words=...)` | Check source code given as a string or bytes. | raises `SyntaxError` |
 | `lint_file(path, ...)` | Read a file (respecting its encoding) and check it. | raises `OSError`, `UnicodeDecodeError` or `SyntaxError` |
 | `lint_paths(paths, ...)` | Check files and folders; stops at the first bad file (0.1.0 behaviour). | raises |
 | `scan_paths(paths, ...)` | Check files and folders and return a `ScanResult` with `files`, `diagnostics`, `errors` and `skipped`. | never raises; records a `FileError` |
@@ -421,6 +446,8 @@ python -m typo_guard lint [options] PATH [PATH ...]
 | `--format {table,text,json}` | `table` | Output style (section 4.3). |
 | `--allow WORD` | none | Accept `WORD` as correct. Repeatable; `a,b,c` lists are allowed. |
 | `--allowlist FILE` | none | Accept the words in `FILE` (UTF-8, words separated by spaces, commas or lines, `#` comments). |
+| `--language {en-US,en-GB}` | `en-US` | Choose American English or common British-English spelling variants. |
+| `--dictionary FILE` | none | Add accepted words from a UTF-8 word list (spaces, commas or lines; `#` comments). |
 | `--max-suggestions N` | `3` | Maximum suggestions per finding. `0` hides suggestions. Negative numbers are rejected. |
 | `--exclude PATTERN` | none | Extra folder or file name pattern to skip while recursing. Repeatable. Added to the built-in list (section 4.1). |
 | `--color {auto,always,never}` | `auto` | Colour mode for the output. |
@@ -435,7 +462,7 @@ python -m typo_guard lint [options] PATH [PATH ...]
 |---:|---|
 | `0` | No possible typos found, or `--exit-zero` was given. |
 | `1` | At least one possible typo was found. |
-| `2` | A usage problem (missing path, invalid option, unreadable allowlist) or at least one file that could not be read or parsed. All other files are still reported. An unexpected internal error also exits with 2. |
+| `2` | A usage problem (missing path, invalid option, unreadable allowlist/dictionary) or at least one file that could not be read or parsed. All other files are still reported. An unexpected internal error also exits with 2. |
 | `130` | Interrupted with Ctrl+C. |
 
 If a run has both typos and file errors, the exit code is `2`, because an incomplete
@@ -455,11 +482,12 @@ check must not look like a normal "typos found" result.
 
 ![Pipeline: find and read files, detection engine, collect and present](images/pipeline.png)
 
-The package has four modules, each with one responsibility:
+The package separates its main responsibilities across modules:
 
 | Module | Responsibility |
 |---|---|
 | `core.py` | The detection engine: file discovery, decoding, AST parsing, the definition visitor, name splitting, the dictionary lookup and the `Diagnostic` record. It does not print anything. |
+| `dictionary.py` | Adds common British spelling variants and supplemental words without mutating the cached base dictionary. |
 | `runner.py` | Runs the engine over many files and turns every per-file failure into a `FileError`, so one broken file cannot stop the run. |
 | `report.py` | The only module that knows about `rich`: the table, the adaptive layouts, the summary line, the text and JSON formats. |
 | `cli.py` | Parses the command line, loads the allowlist, chooses the reporter and computes the exit code. It also contains the last-resort error handling. |
@@ -567,11 +595,19 @@ All comparisons are made in lower case.
 ### 6.8 Step 7: dictionary lookup and suggestions
 
 The remaining words are looked up in the English word-frequency dictionary that ships
-with `pyspellchecker`. Version 0.8.4 and newer hold 160,572 words. The oldest supported
-version, 0.8.1, holds 138,581, so a few words (for example `arg` and `coloured`) are
-only known to newer versions. Pin the `pyspellchecker` version in CI if you need
-identical results on every machine. The dictionary is loaded once per run, which
-takes about 0.2 seconds; after that, checking a typical file takes a few milliseconds.
+with `pyspellchecker`, which is American English by default. Version 0.8.4 and newer
+hold 160,572 words. The oldest supported version, 0.8.1, holds 138,581, so a few words
+(for example `arg` and `coloured`) are only known to newer versions. Pin the
+`pyspellchecker` version in CI if you need identical results on every machine. The
+dictionary is loaded once per run, which takes about 0.2 seconds; after that, checking
+a typical file takes a few milliseconds.
+
+With `--language en-GB` (or `language="en-GB"` in the Python API), typo-guard also
+accepts common British-to-American spelling equivalents, including `colour` → `color`,
+`organise` → `organize`, `centre` → `center` and `travelling` → `traveling`. This is a
+compatibility layer, not a full independent British dictionary. `--dictionary FILE`
+and the API's `dictionary_words` parameter add words to either language without
+changing the cached base dictionary.
 
 A word that is in the dictionary is accepted. A word that is not becomes a finding,
 and its suggestions are computed as follows:
@@ -678,14 +714,14 @@ Install the development extras once, then run pytest from the project folder:
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest                                   # all 152 tests, about 10 seconds
+python -m pytest                                   # all 170 tests, about 10 seconds
 python -m pytest -v                                # every test name and its result
 python -m pytest tests/test_examples.py            # one file
 python -m pytest -k acceptance                     # tests whose name contains "acceptance"
 python -m pytest "tests/test_report.py::test_classic_80_column_terminal_gets_per_file_tables"
 ```
 
-A successful run ends with a line such as `152 passed`. A few tests depend on the
+A successful run ends with a line such as `170 passed`. A few tests depend on the
 operating system (symbolic links, file permissions, shell pipes). They are skipped
 automatically on Windows, or when the tests run as the administrator, and are shown
 as `s`.
@@ -696,10 +732,10 @@ The tests are grouped by the question they answer.
 
 | File | Tests | The question it answers |
 |---|---:|---|
-| `test_core.py` | 7 | *Does the detection engine work?* These are the original 0.1.0 tests, unchanged. They cover name splitting for every naming style, extraction of definitions while strings, comments and attributes are ignored, correct names not being reported, allowlists, recursive discovery, and syntax errors reaching the caller. |
-| `test_engine_preserved.py` | 33 | *Is the engine still the original one?* See section 7.5. |
+| `test_core.py` | 11 | *Does the detection engine work?* Covers name splitting, extraction, allowlists, recursive discovery, British spelling variants, supplemental dictionary words and invalid language settings. |
+| `test_engine_preserved.py` | 42 | *Is the engine still the original one?* See section 7.5. |
 | `test_examples.py` | 25 | *Does the program do what the documentation says?* The demo file must produce exactly the four table rows of section 3, the clean file must produce none, and the demo allowlist must remove `Reponse`. The ten acceptance cases are listed in section 7.3, and every supported definition kind is checked. |
-| `test_cli.py` | 19 | *Does the command line behave correctly?* The table is the default, and the text and JSON formats work. Exit codes are 0, 1 and 2. `--allow`, `--allowlist`, `--max-suggestions`, `--exit-zero`, `--color` and `--version` work, and invalid options are rejected. The first seven are the original 0.1.0 CLI tests. |
+| `test_cli.py` | 24 | *Does the command line behave correctly?* Covers table, text and JSON output, exit codes, `--allow`, `--allowlist`, `--language`, `--dictionary`, `--max-suggestions`, `--exit-zero`, `--color` and `--version`. |
 | `test_report.py` | 21 | *Does the table look right?* Column order and names, colours and styles, the misspelled word shown as written, the `(none)` placeholder, ANSI colour codes, the three width layouts and the exact widths at which they switch, uncropped output in logs, ASCII fallback, safe handling of `[` `]` in paths, and the summary wording. |
 | `test_hardening.py` | 40 | *Does the program survive hostile or unusual input?* One regression test for each defect fixed in 0.2.0 (section 7.4). |
 | `test_packaging.py` | 7 | *Is the package consistent?* The version is defined once, the changelog mentions it, the console script and dependencies are declared, the public API imports, importing `__main__` does not run the CLI, the typing marker and pre-commit hook exist, and typo-guard lints its own `src` and `tests` folders without a single finding. |
@@ -818,7 +854,8 @@ consoles; at worst some characters are replaced.
 
 **typo-guard reports a word that is correct.**
 The word is not in the English dictionary. It may be a product name, an abbreviation,
-jargon or a British spelling. Add it to your allowlist file (section 4.2).
+jargon or a British spelling. Run with `--language en-GB` for common British variants;
+add less common words with `--dictionary` or your allowlist (section 4.2).
 
 **typo-guard does not report a typo I can see.**
 The most common reasons are these. The name is an attribute (`self.recieved`), an
