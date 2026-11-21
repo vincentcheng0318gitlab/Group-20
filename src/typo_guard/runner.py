@@ -14,7 +14,14 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
-from .core import Diagnostic, PathLike, iter_python_files, lint_file
+from .core import (
+    Diagnostic,
+    PathLike,
+    _as_word_tuple,
+    escape_control_chars,
+    iter_python_files,
+    lint_file,
+)
 
 # tokenize.open() reports undecodable files / bad coding cookies as SyntaxError.
 _ENCODING_PROBLEM = re.compile(r"encoding declaration|encoding problem|unknown encoding")
@@ -41,7 +48,7 @@ class FileError:
         return ":".join(parts)
 
     def format_text(self) -> str:
-        return f"{self.location}: {self.message}"
+        return f"{escape_control_chars(self.location)}: {self.message}"
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -71,7 +78,12 @@ def describe_error(path: PathLike, error: BaseException) -> FileError:
     if isinstance(error, SyntaxError):
         message = error.msg or "invalid syntax"
         if _ENCODING_PROBLEM.search(message):
-            return FileError(name, f"cannot decode file: {_FOR_FILENAME.sub('', message)} ({_ENCODING_HINT})")
+            detail = _FOR_FILENAME.sub("", message).strip()
+            if "encoding declaration" in detail:
+                # tokenize says this when the bytes are simply not UTF-8; the
+                # file has no declaration to fix, so do not blame one.
+                detail = "not valid UTF-8 text and no '# -*- coding: ... -*-' declaration"
+            return FileError(name, f"cannot decode file: {detail} ({_ENCODING_HINT})")
         line = error.lineno if isinstance(error.lineno, int) and error.lineno > 0 else None
         column = error.offset if line and isinstance(error.offset, int) and error.offset > 0 else None
         return FileError(name, f"syntax error: {message}", line, column)
@@ -97,12 +109,8 @@ def scan_paths(
 ) -> ScanResult:
     """Lint every Python file under ``paths``, collecting errors per file."""
     result = ScanResult()
-    allow = tuple(allow_words) if not isinstance(allow_words, str) else (allow_words,)
-    dictionary = (
-        tuple(dictionary_words)
-        if not isinstance(dictionary_words, str)
-        else (dictionary_words,)
-    )
+    allow = _as_word_tuple(allow_words)
+    dictionary = _as_word_tuple(dictionary_words)
 
     for raw_path in paths:
         candidate = Path(raw_path)

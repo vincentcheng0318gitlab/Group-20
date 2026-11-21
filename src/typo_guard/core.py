@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import builtins
 import fnmatch
+import io
 import keyword
 import os
 import re
@@ -20,13 +21,16 @@ import warnings
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Iterable, Iterator, Optional, Sequence, Union
 from .dictionary import configured_dictionary
 
-try:
+if TYPE_CHECKING:  # a real class for type checkers, so "SpellChecker" is usable as one
     from spellchecker import SpellChecker
-except ImportError:  # pragma: no cover - gives a clearer runtime error
-    SpellChecker = None  # type: ignore[assignment,misc]
+else:
+    try:
+        from spellchecker import SpellChecker  # type: ignore[assignment,misc]
+    except ImportError:  # pragma: no cover - gives a clearer runtime error
+        SpellChecker = None
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -52,6 +56,22 @@ DEFAULT_EXCLUDES = frozenset({
     ".venv", "__pycache__", "__pypackages__", "_build", "*.egg-info",
     "buck-out", "build", "dist", "node_modules", "site-packages", "venv",
 })
+
+#: Control characters are invisible in a terminal and can be used to fake log
+#: lines, so presentation code renders them as visible escapes instead.
+_CONTROL_ESCAPES = {chr(code): f"\\x{code:02x}" for code in (*range(0x20), 0x7F)}
+_CONTROL_ESCAPES.update({"\n": "\\n", "\r": "\\r", "\t": "\\t"})
+
+
+def escape_control_chars(text: str) -> str:
+    """Replace control characters (newline, ESC, ...) with visible escapes.
+
+    File names are attacker-controlled input: a repository can contain a file
+    called ``evil\\nforged.py`` or one with an embedded ANSI sequence, and the
+    linter prints such names into terminals and CI logs.  Only presentation is
+    affected; ``--format json`` and the Python API keep the real path.
+    """
+    return "".join(_CONTROL_ESCAPES.get(character, character) for character in text)
 
 
 @dataclass(frozen=True, order=True)
@@ -87,7 +107,7 @@ class Diagnostic:
     def format_text(self) -> str:
         hint = f" (suggestions: {', '.join(self.suggestions)})" if self.suggestions else ""
         return (
-            f"{self.path}:{self.line}:{self.column}: TG001 possible typo "
+            f"{escape_control_chars(self.path)}:{self.line}:{self.column}: TG001 possible typo "
             f"'{self.word}' in {self.kind} '{self.identifier}'{hint}"
         )
 
@@ -141,6 +161,27 @@ def _too_complex(filename: str, error: BaseException) -> SyntaxError:
     )
 
 
+def _decode_text(source: bytes) -> str:
+    """Decode bytes the way :func:`ast.parse` does (BOM and PEP 263 aware)."""
+    try:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(source).readline)
+        return source.decode(encoding)
+    except (SyntaxError, UnicodeDecodeError, LookupError):  # pragma: no cover - defensive
+        return source.decode("utf-8", "replace")
+
+
+def _character_lines(source: str | bytes) -> list[str]:
+    """Split source into lines exactly as ``ast`` counts them."""
+    text = source if isinstance(source, str) else _decode_text(source)
+    return re.split(r"\r\n|\r|\n", text)
+
+
+def _char_column(line_text: str, byte_column: int) -> int:
+    """Convert an ``ast`` UTF-8 byte offset into a 1-based character column."""
+    prefix = line_text.encode("utf-8", "surrogatepass")[:byte_column]
+    return len(prefix.decode("utf-8", "replace")) + 1
+
+
 def extract_identifiers(source: str | bytes, filename: str = "<unknown>") -> list[Identifier]:
     """Parse source and return definitions, never strings/comments or attribute uses.
 
@@ -162,7 +203,21 @@ def extract_identifiers(source: str | bytes, filename: str = "<unknown>") -> lis
         raise SyntaxError(str(error), (filename, 1, 1, None)) from error
     except (RecursionError, MemoryError) as error:  # pathologically deep nesting
         raise _too_complex(filename, error) from error
-    return sorted(set(visitor.identifiers))
+    # ast reports col_offset in UTF-8 *bytes*; publishers expect characters, so
+    # that "file:line:col" stays clickable on a non-ASCII line.
+    lines = _character_lines(source)
+
+    def _column(item: Identifier) -> int:
+        index = item.line - 1
+        line_text = lines[index] if 0 <= index < len(lines) else ""
+        return _char_column(line_text, item.column - 1)
+
+    return sorted(
+        {
+            Identifier(item.line, _column(item), item.name, item.kind)
+            for item in visitor.identifiers
+        }
+    )
 
 
 def split_identifier(name: str) -> list[str]:
@@ -211,6 +266,8 @@ def iter_python_files(
                     if (
                         candidate.suffix == ".py"
                         and not _is_excluded(file_name, patterns)
+                        # a symlinked file would read outside the scanned tree
+                        and not candidate.is_symlink()
                         and candidate.is_file()
                         and _unique(candidate)
                     ):
@@ -232,6 +289,13 @@ def _get_spellchecker() -> "SpellChecker":
     return SpellChecker(distance=1)
 
 
+def _as_word_tuple(words: Iterable[str]) -> tuple[str, ...]:
+    """Normalise a word iterable once, before any file is scanned."""
+    if isinstance(words, str):  # a single word, not an iterable of letters
+        return (words,)
+    return tuple(words)
+
+
 def lint_source(
     source: str | bytes,
     *,
@@ -245,9 +309,9 @@ def lint_source(
     spell = configured_dictionary(
         _get_spellchecker(), language=language, additional_words=dictionary_words
     )
-    if isinstance(allow_words, str):  # a single word, not an iterable of letters
-        allow_words = (allow_words,)
-    allowed = DEFAULT_ALLOWLIST | {word.strip().lower() for word in allow_words if word.strip()}
+    allowed = DEFAULT_ALLOWLIST | {
+        word.strip().lower() for word in _as_word_tuple(allow_words) if word.strip()
+    }
     limit = max(0, int(max_suggestions))
     diagnostics: list[Diagnostic] = []
     for identifier in extract_identifiers(source, filename):
@@ -270,7 +334,14 @@ def lint_source(
                         suggestions=tuple(candidates[:limit]),
                     )
                 )
-    return diagnostics
+    # One finding per (file, position, identifier, word): a name such as
+    # "Reponse_reponse" splits into the same word twice at the same place.
+    unique: dict[tuple[str, int, int, str, str], Diagnostic] = {}
+    for item in diagnostics:
+        unique.setdefault(
+            (item.path, item.line, item.column, item.identifier, item.word), item
+        )
+    return list(unique.values())
 
 
 def read_source(path: PathLike) -> str:
@@ -303,9 +374,11 @@ def lint_paths(
     This strict API raises on the first unreadable/invalid file.  Use
     :func:`typo_guard.runner.scan_paths` to collect per-file errors instead.
     """
-    if "dictionary_words" in kwargs:
-        words = kwargs["dictionary_words"]
-        kwargs["dictionary_words"] = (words,) if isinstance(words, str) else tuple(words)  # type: ignore[arg-type]
+    # Normalise both word lists once: a one-shot iterable (generator) would
+    # otherwise be consumed by the first file and silently allow nothing later.
+    for name in ("allow_words", "dictionary_words"):
+        if name in kwargs:
+            kwargs[name] = _as_word_tuple(kwargs[name])  # type: ignore[arg-type]
     diagnostics: list[Diagnostic] = []
     files = iter_python_files(paths, exclude=exclude)
     for path in sorted(files, key=lambda item: str(item)):

@@ -337,6 +337,7 @@ always gets the full table and is never cropped.
 | `1` | One or more possible typos found. |
 | `2` | A path does not exist, the allowlist cannot be read, the command line is invalid, or at least one file could not be read or parsed. Typos in the other files are still reported. |
 | `130` | Interrupted with Ctrl+C. |
+| `141` | The output pipe was closed early (for example `typo-guard lint . | head`), so the run stopped before reaching a verdict. |
 
 ## How it works
 
@@ -360,19 +361,20 @@ walks through every step with examples.
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest            # 170 tests, about 10 seconds
+python -m pytest            # 186 tests, about 10 seconds
 python -m pytest -v         # list every test by name
 ```
 
 | Test file | Tests | What it proves |
 |---|---:|---|
 | `tests/test_core.py` | 11 | Splitting, AST extraction, ignored strings/comments/attributes, allowlists, recursion, British spelling variants and supplemental dictionary words. |
-| `tests/test_engine_preserved.py` | 42 | The 0.2.0 engine is structurally identical to the 0.1.0 code and produces identical findings on a corpus. |
+| `tests/test_engine_preserved.py` | 44 | The 0.2.0 engine is structurally identical to the 0.1.0 code and produces identical findings on a corpus. |
 | `tests/test_examples.py` | 25 | The demo files give exactly the rows shown above, and the ten acceptance cases from the original README are automated. |
 | `tests/test_cli.py` | 24 | Command-line options, including British English and supplemental dictionary files, the three output formats and every exit code. |
 | `tests/test_report.py` | 21 | Table columns, styles, colours, the three width layouts, ASCII fallback and summary wording. |
 | `tests/test_hardening.py` | 40 | One regression test for every robustness defect fixed in 0.2.0 (encodings, broken files, virtual environments, broken pipes, ...). |
 | `tests/test_packaging.py` | 7 | Version, entry point, dependencies, typing marker and pre-commit hook are consistent, and typo-guard lints its own code cleanly. |
+| `tests/test_review_fixes.py` | 14 | One test per defect from the independent review of 0.2.3: allowlist iterables, control characters in file names, columns, symlinks, closed pipes, duplicate findings and error wording. |
 
 The [manual](docs/MANUAL.md#7-the-test-suite) explains what each group of tests
 represents and how to run a single test.
@@ -384,6 +386,7 @@ represents and how to run a single test.
 - **Results depend on the dictionary version.** `pyspellchecker` 0.8.4 and newer know 160,572 words; the oldest supported version, 0.8.1, knows 138,581. Pin the version in CI if every machine must give identical results.
 - **Definitions only.** Attribute names (`self.recieved = ...`), imported names, keyword arguments at call sites, `lambda` parameters, `except ... as name` and `match` captures are not checked. A typo is reported where the name is *defined*, not at every use.
 - **Words shorter than three letters are skipped,** so very short abbreviations are never reported.
+- **Only ASCII letters are split.** Identifiers are divided at runs of characters outside `A-Za-z`, so `naïve_data` is not analysed at all and `café_data` reports the fragment `caf`.
 - **It reports, it does not rewrite.** Renaming should be done with your editor's rename refactoring so that every use is updated.
 
 ## Project layout
@@ -414,7 +417,7 @@ typo-guard/
 │   ├── __init__.py             public API and version
 │   ├── __main__.py             enables `python -m typo_guard`
 │   └── py.typed                marks the package as typed
-└── tests/                      170 tests (see above) and the 0.1.0 reference engine
+└── tests/                      186 tests (see above) and the 0.1.0 reference engine
 ```
 
 ## License

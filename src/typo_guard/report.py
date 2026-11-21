@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from .core import Diagnostic
+from .core import Diagnostic, escape_control_chars
 from .runner import FileError, ScanResult
 
 STYLE_LOCATION = "cyan"
@@ -79,7 +79,8 @@ def source_fragment(diagnostic: Diagnostic) -> str:
 
 
 def _location_cell(item: Diagnostic, grouped: bool) -> str:
-    return f"{item.line}:{item.column}" if grouped else item.location
+    location = f"{item.line}:{item.column}" if grouped else item.location
+    return escape_control_chars(location)
 
 
 def build_table(diagnostics: Sequence[Diagnostic], *, grouped: bool = False) -> Table:
@@ -148,7 +149,7 @@ def _render_grouped(diagnostics: Sequence[Diagnostic], console: Console) -> None
             console.print()
         console.print(
             Text.assemble(
-                (path, f"bold {STYLE_LOCATION}"),
+                (escape_control_chars(path), f"bold {STYLE_LOCATION}"),
                 (f"  {_plural(len(items), 'possible typo')}", "dim"),
             ),
             soft_wrap=True,
@@ -162,7 +163,14 @@ def _render_compact(diagnostics: Sequence[Diagnostic], console: Console) -> None
     for item in diagnostics:
         console.print(
             Text.assemble(
-                (item.location, STYLE_LOCATION), "  ", (item.kind, STYLE_KIND), " ", item.identifier,
+                (
+                    escape_control_chars(item.location),
+                    STYLE_LOCATION,
+                ),
+                "  ",
+                (item.kind, STYLE_KIND),
+                " ",
+                item.identifier,
             )
         )
         suggestions = (
@@ -262,7 +270,7 @@ def render_message(console: Console, level: str, message: str) -> None:
     """Print ``typo-guard: <level>: <message>`` (used for stderr notices)."""
     style = {"error": "bold red", "warning": "yellow"}.get(level, "")
     console.print(
-        Text.assemble("typo-guard: ", (f"{level}:", style), " ", message),
+        Text.assemble("typo-guard: ", (f"{level}:", style), " ", escape_control_chars(message)),
         soft_wrap=True,
     )
 

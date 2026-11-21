@@ -6,7 +6,7 @@
 allowlist changelog dunder filename linted linting pyproject subcommand subparsers traceback
 
 # pytest fixtures and standard-library names
-capsys monkeypatch isatty devnull dirs proc src symlink virtualenvs posix
+capsys monkeypatch isatty devnull dirs proc src symlink virtualenvs posix fileno
 
 # encodings and terminals
 ansi bom crlf undecodable

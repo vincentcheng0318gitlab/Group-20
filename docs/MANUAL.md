@@ -464,6 +464,7 @@ python -m typo_guard lint [options] PATH [PATH ...]
 | `1` | At least one possible typo was found. |
 | `2` | A usage problem (missing path, invalid option, unreadable allowlist/dictionary) or at least one file that could not be read or parsed. All other files are still reported. An unexpected internal error also exits with 2. |
 | `130` | Interrupted with Ctrl+C. |
+| `141` | The output pipe was closed early (for example `typo-guard lint . | head`). The run stopped before reaching a verdict, so this is never a "typos found" result. |
 
 If a run has both typos and file errors, the exit code is `2`, because an incomplete
 check must not look like a normal "typos found" result.
@@ -567,7 +568,9 @@ position, and the list is sorted by line and column.
 
 1. `([A-Z]+)([A-Z][a-z])` → `\1_\2` separates an acronym from the following word.
 2. `([a-z0-9])([A-Z])` → `\1_\2` separates a lower-case letter or digit from the following capital.
-3. Split at every run of non-letters (underscores and digits) and lower-case the parts.
+3. Split at every run of characters outside `A-Za-z` (underscores, digits and any
+   non-ASCII letter) and lower-case the parts. Identifiers that use non-ASCII letters
+   are therefore not analysed reliably; see the known limitations in the README.
 
 Worked example for `HTTPResponseParsr`:
 
@@ -642,7 +645,9 @@ ends with three lists: the files scanned, the findings, and the errors.
 | Non-Python path given | `typo-guard: warning: skipped notes.txt (not a .py file)` |
 
 The CLI adds a final safety net. Ctrl+C ends the run with exit code 130 and a short
-message. A closed output pipe (for example `typo-guard lint . | head`) ends quietly.
+message. A closed output pipe (for example `typo-guard lint . | head`) ends quietly
+with exit code 141 (128 + `SIGPIPE`), because the consumer stopped reading and no
+verdict was reached.
 Output to a console that cannot display Unicode never raises an encoding error. Any
 unexpected internal error is shown as one line with exit code 2 instead of a
 traceback.
@@ -696,7 +701,8 @@ A green check mark is never shown when a file could not be checked.
 
 The CLI computes the exit code from the run result. If any file error occurred, the
 code is 2. Otherwise, if any finding exists and `--exit-zero` was not given, the code
-is 1. In every other case it is 0.
+is 1. In every other case it is 0. A closed output pipe bypasses this computation and
+returns 141, so a truncated run never looks like "typos found".
 
 ### 6.12 Performance
 
@@ -714,14 +720,14 @@ Install the development extras once, then run pytest from the project folder:
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest                                   # all 170 tests, about 10 seconds
+python -m pytest                                   # all 186 tests, about 10 seconds
 python -m pytest -v                                # every test name and its result
 python -m pytest tests/test_examples.py            # one file
 python -m pytest -k acceptance                     # tests whose name contains "acceptance"
 python -m pytest "tests/test_report.py::test_classic_80_column_terminal_gets_per_file_tables"
 ```
 
-A successful run ends with a line such as `170 passed`. A few tests depend on the
+A successful run ends with a line such as `186 passed`. A few tests depend on the
 operating system (symbolic links, file permissions, shell pipes). They are skipped
 automatically on Windows, or when the tests run as the administrator, and are shown
 as `s`.
@@ -733,12 +739,13 @@ The tests are grouped by the question they answer.
 | File | Tests | The question it answers |
 |---|---:|---|
 | `test_core.py` | 11 | *Does the detection engine work?* Covers name splitting, extraction, allowlists, recursive discovery, British spelling variants, supplemental dictionary words and invalid language settings. |
-| `test_engine_preserved.py` | 42 | *Is the engine still the original one?* See section 7.5. |
+| `test_engine_preserved.py` | 44 | *Is the engine still the original one?* See section 7.5. |
 | `test_examples.py` | 25 | *Does the program do what the documentation says?* The demo file must produce exactly the four table rows of section 3, the clean file must produce none, and the demo allowlist must remove `Reponse`. The ten acceptance cases are listed in section 7.3, and every supported definition kind is checked. |
 | `test_cli.py` | 24 | *Does the command line behave correctly?* Covers table, text and JSON output, exit codes, `--allow`, `--allowlist`, `--language`, `--dictionary`, `--max-suggestions`, `--exit-zero`, `--color` and `--version`. |
 | `test_report.py` | 21 | *Does the table look right?* Column order and names, colours and styles, the misspelled word shown as written, the `(none)` placeholder, ANSI colour codes, the three width layouts and the exact widths at which they switch, uncropped output in logs, ASCII fallback, safe handling of `[` `]` in paths, and the summary wording. |
 | `test_hardening.py` | 40 | *Does the program survive hostile or unusual input?* One regression test for each defect fixed in 0.2.0 (section 7.4). |
 | `test_packaging.py` | 7 | *Is the package consistent?* The version is defined once, the changelog mentions it, the console script and dependencies are declared, the public API imports, importing `__main__` does not run the CLI, the typing marker and pre-commit hook exist, and typo-guard lints its own `src` and `tests` folders without a single finding. |
+| `test_review_fixes.py` | 14 | *Did the reviewed defects stay fixed?* One test per item of the 0.2.3 review: `allow_words`/`dictionary_words` iterables, control characters in file names, character columns, file symlinks, closed pipes, duplicate findings, decode wording and the `/dev/null` descriptor. |
 
 ### 7.3 The ten acceptance cases
 

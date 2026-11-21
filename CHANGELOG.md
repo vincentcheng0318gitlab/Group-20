@@ -6,12 +6,49 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-11-21
+
+This release fixes every defect that the independent review of the published
+0.2.3 artifact reported, except the four that are listed under *Known
+limitations* below. 0.2.3 itself was built from uncommitted local edits and its
+console script could not be imported (`_version__` instead of `__version__`), so
+0.2.4 supersedes it and is the first release that can be reproduced from this
+repository.
+
+The detection engine (`_DefinitionVisitor`, `split_identifier`,
+`DEFAULT_ALLOWLIST`) is still the untouched 0.1.0 engine; see *Known
+limitations*.
+
 ### Added
 - `--language en-GB` and the Python API's `language="en-GB"` option accept common British-English spelling variants while keeping American English as the default.
 - `--dictionary FILE` and the Python API's `dictionary_words` parameter add reusable, UTF-8 supplemental vocabulary without mutating the cached base dictionary.
+- Fourteen regression tests, one per review defect, in `tests/test_review_fixes.py`.
 
 ### Fixed
-- Restored the documented `examples/example.py` fixture and scoped the allowlist demo to its two documented sample files, so unrelated teaching examples do not affect acceptance tests.
+- `lint_paths()` dropped a one-shot `allow_words` iterable after the first file, so a generator-built allowlist silently stopped allowing anything from file two onwards. Both word parameters are now normalised once, in one shared helper, and `runner.scan_paths()` reuses it.
+- A file name containing `\n` or an ANSI escape sequence (`0x1b`) was printed verbatim by `--format text`, `--format table` and the error lines, splitting records and allowing terminal or CI-log injection. Control characters are now rendered as visible escapes (`\n`, `\x1b`); `--format json` and the Python API keep the real path.
+- Reported columns were UTF-8 *byte* offsets published as character columns, so any non-ASCII character earlier on the line moved the position further away. Columns are now character based, for `str` and `bytes` input alike.
+- Recursive scans followed `.py` symlinks and linted files outside the requested tree, contradicting the documented "symbolic links are not followed". Links found while walking a directory are skipped; a path named explicitly on the command line is still scanned.
+- A closed output pipe (`typo-guard lint . | head`) returned `1`, which is indistinguishable from "typos found". It now returns `141` (128 + SIGPIPE), meaning the run was cut short and reached no verdict.
+- An identifier such as `Reponse_reponse` produced the same finding twice and a self-contradictory summary ("2 possible typos in 1 identifier"). Findings are now deduplicated per file, position, identifier and word.
+- pyright reported `reportInvalidTypeForm` for `SpellChecker` used as a type expression in `core.py`, which `py.typed` shipped to every downstream user. The name is now imported for type checking only.
+- A file containing invalid UTF-8 was reported as "invalid or missing encoding declaration", although the file had nothing wrong with its declaration. The message now says the bytes are not valid UTF-8.
+- `_silence_stdout()` leaked the file descriptor it opened on `/dev/null`.
+- The compare links at the end of this changelog still pointed at the `your-org` placeholder.
+
+### Changed
+- The exit-code table in `README.md` and `docs/MANUAL.md` documents the new `141` code.
+
+### Known limitations
+
+Deliberately left open: the project pins the detection engine to a verbatim copy
+of 0.1.0 (`tests/test_engine_preserved.py`), so these behave exactly as they did
+in 0.1.0 and are documented rather than changed.
+
+- Function and class findings point at the `def`/`class` keyword, not at the name (four to six columns earlier).
+- Non-ASCII identifiers are split on ASCII letters only, so `naïve_data` is not analysed and `café_data` reports the meaningless fragment `caf`.
+- `lambda` parameters, `match` captures, `import ... as ...`, `except ... as ...` and PEP 695 type parameters are not collected as definitions.
+- Suggestions are ordered by English word frequency with alphabetical ties, as before; the review could not reproduce the claim that this degrades to plain alphabetical order.
 
 ## [0.2.0] - 2026-11-04
 
@@ -82,5 +119,6 @@ Each of these was reproduced against 0.1.0 and is covered by a regression test i
 
 - Initial release: AST-based identifier extraction, naming-style-aware splitting, offline `pyspellchecker` lookup, allowlists, recursive linting, text and JSON output, CI exit codes.
 
-[0.2.0]: https://github.com/your-org/typo-guard/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/your-org/typo-guard/releases/tag/v0.1.0
+[0.2.4]: https://github.com/vincentcheng0318gitlab/Group-20/compare/v0.2.0...v0.2.4
+[0.2.0]: https://github.com/vincentcheng0318gitlab/Group-20/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/vincentcheng0318gitlab/Group-20/releases/tag/v0.1.0

@@ -25,6 +25,8 @@ EXIT_CLEAN = 0
 EXIT_TYPOS = 1
 EXIT_ERROR = 2
 EXIT_INTERRUPTED = 130
+#: 128 + SIGPIPE: the consumer closed the pipe, so no verdict was reached.
+EXIT_PIPE_CLOSED = 141
 
 _WORD_SEPARATORS = re.compile(r"[\s,]+")
 
@@ -181,7 +183,10 @@ def _silence_stdout() -> None:
     """After a broken pipe (e.g. ``| head``) stop Python's flush-at-exit error."""
     try:
         devnull = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull, sys.stdout.fileno())
+        try:
+            os.dup2(devnull, sys.stdout.fileno())
+        finally:
+            os.close(devnull)  # dup2 keeps its own copy; this one would leak
     except (OSError, ValueError, AttributeError):
         pass
 
@@ -246,7 +251,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return EXIT_INTERRUPTED
     except BrokenPipeError:
         _silence_stdout()
-        return EXIT_TYPOS
+        return EXIT_PIPE_CLOSED
     except Exception as error:  # last-resort guard: never show a raw traceback
         if os.environ.get("TYPO_GUARD_DEBUG"):
             raise

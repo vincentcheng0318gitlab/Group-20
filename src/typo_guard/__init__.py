@@ -23,7 +23,7 @@ from .core import (
 )
 from .runner import FileError, ScanResult, scan_paths
 
-__version__ = "0.2.0"
+__version__ = "0.2.4"
 
 __all__ = [
     "DEFAULT_ALLOWLIST",
