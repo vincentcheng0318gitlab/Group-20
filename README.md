@@ -417,49 +417,6 @@ typo-guard/
 └── tests/                      170 tests (see above) and the 0.1.0 reference engine
 ```
 
-## Distribution and publishing
-
-**Share the source.** Zip the folder (without `.venv`) or push it to a Git host. The
-recipient follows [Option B](#option-b-install-from-the-source-folder-recommended-for-review-and-development).
-
-**Share a wheel.** Run `python -m build` and send `dist/typo_guard-0.2.0-py3-none-any.whl`.
-It installs offline with `pip install <file>`, provided the two dependencies are
-available.
-
-**Install straight from Git.** Use
-`python -m pip install "git+https://github.com/your-org/typo-guard.git@v0.2.0"`.
-
-**Publish to PyPI:**
-
-1. Replace every `your-org` URL in `pyproject.toml`, this README and `CHANGELOG.md` with the real repository URL.
-2. PyPI cannot display relative image paths. Before uploading, change the image links in this README to absolute `https://raw.githubusercontent.com/<org>/typo-guard/main/docs/images/...` URLs.
-3. Check that the name is still free at https://pypi.org/project/typo-guard/ (it was unregistered on 2026-11-04).
-4. Build, check, and upload, trying TestPyPI first:
-
-   ```bash
-   python -m build
-   python -m twine check dist/*
-   python -m twine upload --repository testpypi dist/*
-   python -m twine upload dist/*
-   ```
-
-5. Tag the release (`git tag v0.2.0 && git push --tags`) so the pre-commit hook can pin it.
-
-Never commit a PyPI token; use `TWINE_PASSWORD`, a keyring or PyPI trusted publishing.
-
-## Assessment rubric checklist
-
-| Criterion | Where it is satisfied |
-|---|---|
-| **Motivation** | [Motivation](#motivation): why identifier typos matter and why plain spellcheckers are not enough. |
-| **Innovation** | [Innovation](#innovation) and [How it compares](#how-it-compares): six distinguishing ideas and a comparison with codespell, typos and pylint. |
-| **Installation guide** | [Installation](#installation): three installation routes, per-OS commands and verification. The manual adds troubleshooting. |
-| **Usage examples** | [Usage](#usage): quick start, a command table, real outputs in all three formats, allowlist, CI, pre-commit and Python API. |
-| **Functional** | 170 collected pytest cases on Python 3.9 to 3.14, a fault-tolerant runner, and documented exit codes. |
-| **Documented** | This README, the [manual](docs/MANUAL.md) (install, internals, tests, troubleshooting) and the [changelog](CHANGELOG.md). |
-| **Published** | `pyproject.toml` is ready, `twine check` passes, and the steps are in [Distribution and publishing](#distribution-and-publishing). |
-| **Teamwork** | Use a public Git repository with regular, meaningful commits from every group member. |
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
