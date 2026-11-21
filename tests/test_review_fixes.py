@@ -138,11 +138,13 @@ def test_a_symlink_named_on_the_command_line_is_still_scanned(tmp_path):
 
 
 @POSIX_ONLY
-def test_closed_output_pipe_exits_with_141(tmp_path):
+@pytest.mark.parametrize("output_format", ["text", "json", "table"])
+def test_closed_output_pipe_exits_with_141_for_every_format(tmp_path, output_format):
+    """``table`` goes through rich, whose default exits with 1 instead."""
     path = tmp_path / "clean.py"
     path.write_text("good_name = 1\n", encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, "-m", "typo_guard", "lint", "--format", "text", str(path)],
+        [sys.executable, "-m", "typo_guard", "lint", "--format", output_format, str(path)],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         env=dict(os.environ, PYTHONPATH=SRC),
@@ -150,6 +152,40 @@ def test_closed_output_pipe_exits_with_141(tmp_path):
     proc.stdout.close()
 
     assert proc.wait() == 141
+
+
+# --- H-2 (follow-up): invisible Unicode formatting characters ---------------
+
+
+@pytest.mark.parametrize(
+    "character, escaped",
+    [
+        ("\u202e", "\\u202e"),  # right-to-left override
+        ("\u2066", "\\u2066"),  # left-to-right isolate
+        ("\u200b", "\\u200b"),  # zero-width space
+        ("\ufeff", "\\ufeff"),  # zero-width no-break space
+        ("\x9b", "\\x9b"),      # C1 control
+    ],
+)
+def test_invisible_format_character_in_a_file_name_is_escaped(tmp_path, capsys, character, escaped):
+    path = tmp_path / f"evil{character}gnp.py"
+    path.write_text("recieved_data = 1\n", encoding="utf-8")
+
+    assert main(["lint", str(path), "--format", "text"]) == 1
+
+    out = capsys.readouterr().out
+    assert escaped in out
+    assert character not in out
+
+
+def test_invisible_format_character_in_a_missing_path_is_escaped(tmp_path, capsys):
+    missing = tmp_path / "evil\u202egnp.py"
+
+    assert main(["lint", str(missing)]) == 2
+
+    err = capsys.readouterr().err
+    assert "\\u202e" in err
+    assert "\u202e" not in err
 
 
 # --- M-4: one finding per identifier and word -------------------------------

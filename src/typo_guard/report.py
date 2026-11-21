@@ -33,6 +33,21 @@ GROUPED_COLUMNS = ("Line:Col", "Kind", "Identifier", "Misspelled", "Suggestions"
 _HUGE_WIDTH = 100_000
 
 
+class _PipeSafeConsole(Console):
+    """A console that reports a closed output pipe as ``BrokenPipeError``.
+
+    ``rich`` catches ``BrokenPipeError`` itself and its default
+    ``on_broken_pipe()`` raises ``SystemExit(1)``, which is not a
+    ``BrokenPipeError``: the table format therefore returned 1 for a truncated
+    run, indistinguishable from "typos found".  Re-raising lets ``main()``
+    apply the documented exit code 141 to every format.
+    """
+
+    def on_broken_pipe(self) -> None:
+        self.quiet = True  # rich's default also stops further writes
+        raise BrokenPipeError
+
+
 def make_console(*, stderr: bool = False, color: str = "auto") -> Console:
     """Create a console for stdout/stderr honouring ``auto|always|never``.
 
@@ -44,7 +59,7 @@ def make_console(*, stderr: bool = False, color: str = "auto") -> Console:
         options.update(no_color=True, color_system=None)
     elif color == "always":
         options.update(force_terminal=True)
-    return Console(**options)
+    return _PipeSafeConsole(**options)
 
 
 def _is_interactive(console: Console) -> bool:

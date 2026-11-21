@@ -58,18 +58,32 @@ DEFAULT_EXCLUDES = frozenset({
 })
 
 #: Control characters are invisible in a terminal and can be used to fake log
-#: lines, so presentation code renders them as visible escapes instead.
-_CONTROL_ESCAPES = {chr(code): f"\\x{code:02x}" for code in (*range(0x20), 0x7F)}
+#: lines, so presentation code renders them as visible escapes instead.  Some
+#: Unicode characters are equally invisible and can reorder text (bidi
+#: overrides, isolates, zero-width joiners, line separators).
+_C1_CONTROLS = range(0x80, 0xA0)
+_INVISIBLE_UNICODE = (
+    *range(0x200B, 0x2010),      # zero-width space/joiners and bidi marks
+    *range(0x202A, 0x202F),      # LRE, RLE, PDF, LRO, RLO
+    0x2028, 0x2029,              # line and paragraph separator
+    *range(0x2066, 0x206A),      # bidi isolates
+    0xFEFF,                      # zero-width no-break space (BOM)
+)
+_CONTROL_ESCAPES = {
+    chr(code): f"\\x{code:02x}" for code in (*range(0x20), 0x7F, *_C1_CONTROLS)
+}
+_CONTROL_ESCAPES.update({chr(code): f"\\u{code:04x}" for code in _INVISIBLE_UNICODE})
 _CONTROL_ESCAPES.update({"\n": "\\n", "\r": "\\r", "\t": "\\t"})
 
 
 def escape_control_chars(text: str) -> str:
-    """Replace control characters (newline, ESC, ...) with visible escapes.
+    """Replace control and invisible formatting characters with visible escapes.
 
     File names are attacker-controlled input: a repository can contain a file
-    called ``evil\\nforged.py`` or one with an embedded ANSI sequence, and the
-    linter prints such names into terminals and CI logs.  Only presentation is
-    affected; ``--format json`` and the Python API keep the real path.
+    called ``evil\\nforged.py``, one with an embedded ANSI sequence, or one with
+    a right-to-left override such as ``\\u202egnp.py`` that reverses what the log
+    line appears to say.  Only presentation is affected; ``--format json`` and
+    the Python API keep the real path.
     """
     return "".join(_CONTROL_ESCAPES.get(character, character) for character in text)
 
