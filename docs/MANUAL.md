@@ -381,8 +381,8 @@ Add this to `.pre-commit-config.yaml` in your project:
 
 ```yaml
 repos:
-  - repo: https://github.com/your-org/typo-guard
-    rev: v0.2.0
+  - repo: https://github.com/vincentcheng0318gitlab/Group-20
+    rev: v0.2.4
     hooks:
       - id: typo-guard
         args: [--allowlist, .typo-guard-words]
@@ -720,14 +720,14 @@ Install the development extras once, then run pytest from the project folder:
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest                                   # all 186 tests, about 10 seconds
+python -m pytest                                   # all 194 tests, about 10 seconds
 python -m pytest -v                                # every test name and its result
 python -m pytest tests/test_examples.py            # one file
 python -m pytest -k acceptance                     # tests whose name contains "acceptance"
 python -m pytest "tests/test_report.py::test_classic_80_column_terminal_gets_per_file_tables"
 ```
 
-A successful run ends with a line such as `186 passed`. A few tests depend on the
+A successful run ends with a line such as `194 passed`. A few tests depend on the
 operating system (symbolic links, file permissions, shell pipes). They are skipped
 automatically on Windows, or when the tests run as the administrator, and are shown
 as `s`.
@@ -745,7 +745,7 @@ The tests are grouped by the question they answer.
 | `test_report.py` | 21 | *Does the table look right?* Column order and names, colours and styles, the misspelled word shown as written, the `(none)` placeholder, ANSI colour codes, the three width layouts and the exact widths at which they switch, uncropped output in logs, ASCII fallback, safe handling of `[` `]` in paths, and the summary wording. |
 | `test_hardening.py` | 40 | *Does the program survive hostile or unusual input?* One regression test for each defect fixed in 0.2.0 (section 7.4). |
 | `test_packaging.py` | 7 | *Is the package consistent?* The version is defined once, the changelog mentions it, the console script and dependencies are declared, the public API imports, importing `__main__` does not run the CLI, the typing marker and pre-commit hook exist, and typo-guard lints its own `src` and `tests` folders without a single finding. |
-| `test_review_fixes.py` | 14 | *Did the reviewed defects stay fixed?* One test per item of the 0.2.3 review: `allow_words`/`dictionary_words` iterables, control characters in file names, character columns, file symlinks, closed pipes, duplicate findings, decode wording and the `/dev/null` descriptor. |
+| `test_review_fixes.py` | 22 | *Did the reviewed defects stay fixed?* One test per item of the 0.2.3 review: `allow_words`/`dictionary_words` iterables, control and invisible Unicode characters in file names, character columns, file symlinks, closed pipes in every output format, duplicate findings, decode wording and the `/dev/null` descriptor. |
 
 ### 7.3 The ten acceptance cases
 
@@ -811,13 +811,18 @@ which part differs.
 
 ### 7.6 Supported Python versions
 
-The suite was run on Python 3.9, 3.10, 3.11, 3.12, 3.13 and 3.14 with the newest
-dependency versions. It was also run on Python 3.9 with the *oldest* supported
-dependency versions (`rich` 12.0.0 and `pyspellchecker` 0.8.1). All runs passed. The
-included GitHub Actions workflow repeats this on every push, on Linux for every
-version and on Windows and macOS for Python 3.12. It also checks that typo-guard
-lints its own code cleanly, that the demo still returns exit code 1, and that the
-built distributions pass `twine check`.
+The GitHub Actions workflow runs the suite with the newest dependency versions on
+Python 3.10, 3.11, 3.12, 3.13 and 3.14 on Linux, and on Windows and macOS with
+Python 3.12. The oldest supported dependency versions (`rich` 12.0.0 and
+`pyspellchecker` 0.8.1) are checked separately. `requires-python` is `>=3.9`, so
+3.9 stays installable, but 3.9 is not part of the CI matrix and is therefore not
+verified by CI.
+
+The same workflow also checks that typo-guard lints its own code cleanly, that the
+demo returns exit code 1, and that the built distributions pass `twine check`. A
+separate `release-gates` job fails when the pushed tag does not match
+`typo_guard.__version__`, and it installs the built wheel into a fresh virtual
+environment to run `typo-guard --version` and the demo file.
 
 ### 7.7 Manual checks for a live demonstration
 

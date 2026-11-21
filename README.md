@@ -116,7 +116,8 @@ comments, and typo-guard for the names in the code.
 
 ### Requirements
 
-You need Python 3.9 or newer (tested on 3.9, 3.10, 3.11, 3.12, 3.13 and 3.14) and `pip`.
+You need Python 3.9 or newer (CI runs 3.10 to 3.14 on Linux, and 3.12 on Windows and
+macOS) and `pip`.
 Two small dependencies are installed automatically: `pyspellchecker` provides the
 offline dictionary and `rich` draws the table. typo-guard needs no internet
 connection after installation.
@@ -291,8 +292,8 @@ GitHub Actions:
 
 ```yaml
 repos:
-  - repo: https://github.com/your-org/typo-guard
-    rev: v0.2.0
+  - repo: https://github.com/vincentcheng0318gitlab/Group-20
+    rev: v0.2.4
     hooks:
       - id: typo-guard
         args: [--allowlist, .typo-guard-words]
@@ -361,7 +362,7 @@ walks through every step with examples.
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest            # 186 tests, about 10 seconds
+python -m pytest            # 194 tests, about 10 seconds
 python -m pytest -v         # list every test by name
 ```
 
@@ -374,7 +375,7 @@ python -m pytest -v         # list every test by name
 | `tests/test_report.py` | 21 | Table columns, styles, colours, the three width layouts, ASCII fallback and summary wording. |
 | `tests/test_hardening.py` | 40 | One regression test for every robustness defect fixed in 0.2.0 (encodings, broken files, virtual environments, broken pipes, ...). |
 | `tests/test_packaging.py` | 7 | Version, entry point, dependencies, typing marker and pre-commit hook are consistent, and typo-guard lints its own code cleanly. |
-| `tests/test_review_fixes.py` | 14 | One test per defect from the independent review of 0.2.3: allowlist iterables, control characters in file names, columns, symlinks, closed pipes, duplicate findings and error wording. |
+| `tests/test_review_fixes.py` | 22 | One test per defect from the independent review of 0.2.3: allowlist iterables, control characters in file names, columns, symlinks, closed pipes in every format, duplicate findings and error wording. |
 
 The [manual](docs/MANUAL.md#7-the-test-suite) explains what each group of tests
 represents and how to run a single test.
@@ -399,7 +400,7 @@ typo-guard/
 ├── LICENSE                     MIT
 ├── .pre-commit-hooks.yaml      lets other projects use typo-guard as a pre-commit hook
 ├── .typo-guard-words           typo-guard's own vocabulary (it lints itself in CI)
-├── .github/workflows/tests.yml CI: Python 3.9-3.14 on Linux, plus Windows and macOS
+├── .github/workflows/tests.yml CI: Python 3.10-3.14 on Linux, plus Windows and macOS
 ├── docs/
 │   ├── MANUAL.md               the full instruction manual
 │   ├── MANUAL.pdf              the same manual as a printable PDF
@@ -417,7 +418,7 @@ typo-guard/
 │   ├── __init__.py             public API and version
 │   ├── __main__.py             enables `python -m typo_guard`
 │   └── py.typed                marks the package as typed
-└── tests/                      186 tests (see above) and the 0.1.0 reference engine
+└── tests/                      194 tests (see above) and the 0.1.0 reference engine
 ```
 
 ## License

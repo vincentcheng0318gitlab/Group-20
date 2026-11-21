@@ -15,6 +15,10 @@ console script could not be imported (`_version__` instead of `__version__`), so
 0.2.4 supersedes it and is the first release that can be reproduced from this
 repository.
 
+A second verification round against the tagged 0.2.4 found two more defects — the
+default `table` format still returned `1` on a closed pipe, and invisible Unicode
+formatting characters were still printed verbatim — both fixed below.
+
 The detection engine (`_DefinitionVisitor`, `split_identifier`,
 `DEFAULT_ALLOWLIST`) is still the untouched 0.1.0 engine; see *Known
 limitations*.
@@ -22,14 +26,15 @@ limitations*.
 ### Added
 - `--language en-GB` and the Python API's `language="en-GB"` option accept common British-English spelling variants while keeping American English as the default.
 - `--dictionary FILE` and the Python API's `dictionary_words` parameter add reusable, UTF-8 supplemental vocabulary without mutating the cached base dictionary.
-- Fourteen regression tests, one per review defect, in `tests/test_review_fixes.py`.
+- Twenty-two regression tests, one per review defect, in `tests/test_review_fixes.py`.
 
 ### Fixed
 - `lint_paths()` dropped a one-shot `allow_words` iterable after the first file, so a generator-built allowlist silently stopped allowing anything from file two onwards. Both word parameters are now normalised once, in one shared helper, and `runner.scan_paths()` reuses it.
 - A file name containing `\n` or an ANSI escape sequence (`0x1b`) was printed verbatim by `--format text`, `--format table` and the error lines, splitting records and allowing terminal or CI-log injection. Control characters are now rendered as visible escapes (`\n`, `\x1b`); `--format json` and the Python API keep the real path.
 - Reported columns were UTF-8 *byte* offsets published as character columns, so any non-ASCII character earlier on the line moved the position further away. Columns are now character based, for `str` and `bytes` input alike.
 - Recursive scans followed `.py` symlinks and linted files outside the requested tree, contradicting the documented "symbolic links are not followed". Links found while walking a directory are skipped; a path named explicitly on the command line is still scanned.
-- A closed output pipe (`typo-guard lint . | head`) returned `1`, which is indistinguishable from "typos found". It now returns `141` (128 + SIGPIPE), meaning the run was cut short and reached no verdict.
+- A closed output pipe (`typo-guard lint . | head`) returned `1`, which is indistinguishable from "typos found". It now returns `141` (128 + SIGPIPE), meaning the run was cut short and reached no verdict. The default `table` format kept returning `1`, because `rich` handles a broken pipe itself and raises `SystemExit(1)`, which is not a `BrokenPipeError`; the console now re-raises `BrokenPipeError`, so all three formats return `141`.
+- Invisible Unicode formatting characters in file names were printed verbatim: bidi overrides (`U+202A`-`U+202E`), isolates (`U+2066`-`U+2069`), zero-width characters (`U+200B`-`U+200F`), `U+FEFF`, line and paragraph separators, and C1 controls. A name such as `\u202egnp.py` could therefore reorder the visible text of a log line. They are now escaped as `\uXXXX` (or `\xNN` below `U+0100`) in text, table and error output.
 - An identifier such as `Reponse_reponse` produced the same finding twice and a self-contradictory summary ("2 possible typos in 1 identifier"). Findings are now deduplicated per file, position, identifier and word.
 - pyright reported `reportInvalidTypeForm` for `SpellChecker` used as a type expression in `core.py`, which `py.typed` shipped to every downstream user. The name is now imported for type checking only.
 - A file containing invalid UTF-8 was reported as "invalid or missing encoding declaration", although the file had nothing wrong with its declaration. The message now says the bytes are not valid UTF-8.
@@ -38,6 +43,9 @@ limitations*.
 
 ### Changed
 - The exit-code table in `README.md` and `docs/MANUAL.md` documents the new `141` code.
+- `README.md` and `docs/MANUAL.md` now state the Python versions the CI actually runs (3.10-3.14 on Linux, 3.12 on Windows and macOS) and note that 3.9 is installable but not CI-verified.
+- The pre-commit examples use the real repository URL and `rev: v0.2.4` instead of the `your-org/typo-guard` placeholder and `v0.2.0`.
+- `.github/workflows/tests.yml` gains a `release-gates` job: a pushed tag must equal `typo_guard.__version__`, and the built wheel is installed into a fresh virtual environment to run `typo-guard --version` and the demo file. This is the gate that the 0.2.3 release got past.
 
 ### Known limitations
 
