@@ -293,7 +293,7 @@ GitHub Actions:
 ```yaml
 repos:
   - repo: https://github.com/vincentcheng0318gitlab/Group-20
-    rev: v0.2.4
+    rev: v0.3.1
     hooks:
       - id: typo-guard
         args: [--allowlist, .typo-guard-words]

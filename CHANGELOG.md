@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-21
+
+No functional change: 0.3.1 publishes the code of the `v0.2.4` tag under a new
+minor version. 0.2.4 was tagged and pushed but never uploaded to PyPI, and 0.2.3
+— the only artifact that was ever published — cannot be imported, so 0.3.1 is the
+first installable release. It moves one minor version past 0.2.4, so the version,
+the tag and the published file can never be confused with the withdrawn 0.2.4
+attempt.
+
+### Changed
+
+- Version 0.2.4 → 0.3.1. The tagged commit differs from `v0.2.4` only in the
+  version string, the pre-commit `rev` in the documentation and this entry; the
+  fixes described under 0.2.4 below are the same code.
+
 ## [0.2.4] - 2026-11-21
 
 This release fixes every defect that the independent review of the published
@@ -127,6 +142,7 @@ Each of these was reproduced against 0.1.0 and is covered by a regression test i
 
 - Initial release: AST-based identifier extraction, naming-style-aware splitting, offline `pyspellchecker` lookup, allowlists, recursive linting, text and JSON output, CI exit codes.
 
+[0.3.1]: https://github.com/vincentcheng0318gitlab/Group-20/compare/v0.2.4...v0.3.1
 [0.2.4]: https://github.com/vincentcheng0318gitlab/Group-20/compare/v0.2.0...v0.2.4
 [0.2.0]: https://github.com/vincentcheng0318gitlab/Group-20/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vincentcheng0318gitlab/Group-20/releases/tag/v0.1.0
